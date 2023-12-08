@@ -8,6 +8,7 @@ add_executable(AdventOfCode2023
 	AdventOfCode2023.cpp
 	AdventOfCode2023.h
 	Problem1.cpp
+	Problem2.cpp
 	_clang-format
 )
 
