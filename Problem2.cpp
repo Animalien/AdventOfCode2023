@@ -22,69 +22,99 @@ private:
         StringList lines;
         ReadFileLines(filename, lines);
 
-        const BigInt total =
-            CountTotalIDsOfPossibleGames(lines, 12, 13, 14, verbose);
+        BigInt totalPossibleGameIDs = 0;
+        BigInt totalPowerPossible = 0;
+        ProcessGames(lines, 12, 13, 14, totalPossibleGameIDs, totalPowerPossible, verbose);
 
-        printf("  Total IDs of possible games = %lld\n\n", total);
+        printf("  Total IDs of possible games = %lld, total power possible = %lld\n\n", totalPossibleGameIDs, totalPowerPossible);
     }
 
-    BigInt CountTotalIDsOfPossibleGames(const StringList& lines, BigInt numRed, BigInt numGreen, BigInt numBlue, bool verbose)
+    void ProcessGames(const StringList& lines, BigInt numRed, BigInt numGreen, BigInt numBlue, BigInt& totalPossibleGameIDs, BigInt& totalPowerPossible, bool verbose)
     {
-        BigInt total = 0;
+        totalPossibleGameIDs = 0;
+        totalPowerPossible = 0;
         for (const std::string& line: lines)
         {
+            if (verbose)
+                printf("    Line = '%s'\n", line.c_str());
+
             BigInt gameID = -1;
-            const bool isPossible = IsGamePossible(line, numRed, numGreen, numBlue, gameID, verbose);
+            bool isPossible = false;
+            BigInt powerPossible = 0;
+            ProcessGame(line, numRed, numGreen, numBlue, gameID, isPossible, powerPossible, verbose);
 
             if (isPossible)
-                total += gameID;
+                totalPossibleGameIDs += gameID;
+
+            totalPowerPossible += powerPossible;
 
             if (verbose)
-                printf("    Line = '%s', is possible = %s, gameID = %lld\n", line.c_str(), isPossible ? "yes" : "no", gameID);
+                printf("      gameID = %lld, is possible = %s, power possible = %lld\n", gameID, isPossible ? "yes" : "no", powerPossible);
         }
-
-        return total;
     }
 
-    bool IsGamePossible(const std::string& line, BigInt numRed, BigInt numGreen, BigInt numBlue, BigInt& gameID, bool verbose)
+    void ProcessGame(const std::string& line, BigInt numRed, BigInt numGreen, BigInt numBlue, BigInt& gameID, bool& isPossible, BigInt& powerPossible, bool verbose)
     {
         StringList tokens;
         Tokenize(line, tokens, ' ');
         gameID = strtoll(tokens[1].c_str(), nullptr, 10);
+
+        isPossible = true;
+
+        BigInt redMax = 0;
+        BigInt greenMax = 0;
+        BigInt blueMax = 0;
 
         for (BigInt tokenIndex = 2; tokenIndex < (BigInt)tokens.size(); tokenIndex += 2)
         {
             const BigInt number = strtoll(tokens[tokenIndex].c_str(), nullptr, 10);
             if (strncmp(tokens[tokenIndex + 1].c_str(), "red", 3) == 0)
             {
-                if (number > numRed)
+                if (isPossible && (number > numRed))
                 {
                     if (verbose)
-                        printf("      red %lld is > %lld\n", number, numRed);
-                    return false;
+                        printf("      game is impossible because red %lld is > %lld\n", number, numRed);
+                    isPossible = false;
                 }
+
+                if (number > redMax)
+                    redMax = number;
             }
             else if (strncmp(tokens[tokenIndex + 1].c_str(), "green", 5) == 0)
             {
-                if (number > numGreen)
+                if (isPossible && (number > numGreen))
                 {
                     if (verbose)
-                        printf("      green %lld is > %lld\n", number, numGreen);
-                    return false;
+                        printf("      game is impossible because green %lld is > %lld\n", number, numGreen);
+                    isPossible = false;
                 }
+
+                if (number > greenMax)
+                    greenMax = number;
             }
             else if (strncmp(tokens[tokenIndex + 1].c_str(), "blue", 4) == 0)
             {
-                if (number > numBlue)
+                if (isPossible && (number > numBlue))
                 {
                     if (verbose)
-                        printf("      blue %lld is > %lld\n", number, numBlue);
-                    return false;
+                        printf("      game is impossible because blue %lld is > %lld\n", number, numBlue);
+                    isPossible = false;
                 }
+
+                if (number > blueMax)
+                    blueMax = number;
             }
         }
 
-        return true;
+        powerPossible = redMax * greenMax * blueMax;
+
+        if (verbose)
+            printf(
+                "      red max %lld * green max %lld * blue max %lld = power possible %lld\n",
+                redMax,
+                greenMax,
+                blueMax,
+                powerPossible);
     }
 };
 
