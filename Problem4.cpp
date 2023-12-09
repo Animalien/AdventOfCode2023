@@ -23,22 +23,31 @@ private:
         ReadFileLines(filename, lines);
 
         BigInt sumOfCardPoints = 0;
-        for (const auto& line: lines)
+        BigIntList numCardsList;
+        numCardsList.resize(lines.size(), 1);
+        for (BigInt cardIndex = 0; cardIndex<(BigInt)lines.size(); ++cardIndex)
         {
-            const BigInt cardPoints = CalcCardPoints(line, verbose);
+            BigInt cardPoints = 0;
+            ProcessCard(lines, cardIndex, cardPoints, numCardsList, verbose);
             sumOfCardPoints += cardPoints;
         }
 
-        printf("  Sum of card points = %lld\n\n", sumOfCardPoints);
+        BigInt totalNumCards = 0;
+        for (BigInt numCards: numCardsList)
+        {
+            totalNumCards += numCards;
+        }
+
+        printf("  Sum of card points (Part 1) = %lld, total num cards (Part 2) = %lld\n\n", sumOfCardPoints, totalNumCards);
     }
 
-    BigInt CalcCardPoints(const std::string& card, bool verbose)
+    void ProcessCard(const StringList& cardList, BigInt cardIndex, BigInt& cardPoints, BigIntList& numCardsList, bool verbose)
     {
         StringList tokens;
-        Tokenize(card, tokens, ' ');
+        Tokenize(cardList[cardIndex], tokens, ' ');
 
         if (verbose)
-            printf("    Card %s\n", tokens[1].c_str());
+            printf("    Card %lld\n", cardIndex + 1);
 
         BigIntUnorderedSet winningSet;
 
@@ -50,12 +59,14 @@ private:
         }
 
         ++tokenIndex;
-        BigInt cardPoints = 0;
+        BigInt numWinningNumbers = 0;
+        cardPoints = 0;
         for (; tokenIndex < (BigInt)tokens.size(); ++tokenIndex)
         {
             const BigInt cardNumber = strtoll(tokens[tokenIndex].c_str(), nullptr, 10);
             if (winningSet.count(cardNumber) > 0)
             {
+                ++numWinningNumbers;
                 if (cardPoints > 0)
                     cardPoints += cardPoints;
                 else
@@ -65,7 +76,31 @@ private:
             }
         }
 
-        return cardPoints;
+        const BigInt numberOfThisCardCopies = numCardsList[cardIndex];
+
+        if (verbose)
+            printf(
+                "      Card has %lld winning numbers, so next %lld cards get %lld more copies (because this card already has %lld copies):\n",
+                numWinningNumbers,
+                numWinningNumbers,
+                numberOfThisCardCopies,
+                numberOfThisCardCopies);
+
+        for (BigInt i = 0; i < numWinningNumbers; ++i)
+        {
+            const BigInt nextCardIndex = cardIndex + 1 + i;
+            if (nextCardIndex >= (BigInt)cardList.size())
+                break;
+
+            numCardsList[nextCardIndex] += numberOfThisCardCopies;
+
+            if (verbose)
+                printf(
+                    "        Card %lld gets %lld more copies, to a total of %lld\n",
+                    nextCardIndex + 1,
+                    numberOfThisCardCopies,
+                    numCardsList[nextCardIndex]);
+        }
     }
 };
 
