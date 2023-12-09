@@ -15,6 +15,11 @@ public:
     }
 
 private:
+    static const char sc_emptyChar = '.';
+    static const char sc_gearChar = '*';
+
+    typedef std::unordered_map<BigInt, BigIntList> GearMap;
+
     void RunOnData(const char* filename, bool verbose)
     {
         printf("For file '%s'...\n", filename);
@@ -23,39 +28,79 @@ private:
         ReadFileLines(filename, lines);
 
         BigInt sumOfPartNumbers = 0;
-        ProcessSchematic(lines, sumOfPartNumbers, verbose);
+        BigInt sumOfGearRatios = 0;
+        ProcessSchematic(lines, sumOfPartNumbers, sumOfGearRatios, verbose);
 
-        printf("  Sum of part numbers = %lld\n", sumOfPartNumbers);
+        printf("  Sum of part numbers = %lld, sum of gear ratios = %lld\n", sumOfPartNumbers, sumOfGearRatios);
     }
 
-    void ProcessSchematic(const StringList& lines, BigInt& sumOfPartNumbers, bool verbose)
+    void ProcessSchematic(const StringList& lines, BigInt& sumOfPartNumbers, BigInt& sumOfGearRatios, bool verbose)
     {
         sumOfPartNumbers = 0;
 
         BigInt x = 0;
         BigInt y = 0;
 
+        GearMap gearMap;
+
         for (;;)
         {
             BigInt partNumber = -1;
-            FindNextPart(lines, x, y, partNumber, verbose);
+            FindNextPart(lines, gearMap, x, y, partNumber, verbose);
 
             if (partNumber < 0)
-                return;
+                break;
 
             sumOfPartNumbers += partNumber;
             if (verbose)
                 printf("    Found part number %lld, sum = %lld\n", partNumber, sumOfPartNumbers);
         }
+
+        if (verbose)
+            printf("    Found gears:\n");
+
+        sumOfGearRatios = 0;
+        for (const auto& gearMapPair: gearMap)
+        {
+            const BigInt gearX = gearMapPair.first % lines.size();
+            const BigInt gearY = gearMapPair.first / lines.size();
+            if (gearMapPair.second.size() == 2)
+            {
+                const BigInt gearFirstPartNumber = gearMapPair.second[0];
+                const BigInt gearSecondPartNumber = gearMapPair.second[1];
+                const BigInt gearRatio = gearFirstPartNumber * gearSecondPartNumber;
+                sumOfGearRatios += gearRatio;
+
+                if (verbose)
+                    printf(
+                        "      Found '%c' char, is a gear, gear ratio = %lld * %lld = %lld, sum of gear ratios = %lld\n",
+                        (int)sc_gearChar,
+                        gearFirstPartNumber,
+                        gearSecondPartNumber,
+                        gearRatio,
+                        sumOfGearRatios);
+            }
+            else
+            {
+                if (verbose)
+                    printf(
+                        "      Found '%c' char, is NOT a gear, because it has %lld parts adjacent\n",
+                        (int)sc_gearChar,
+                        gearMapPair.second.size());
+            }
+        }
     }
 
     void FindNextPart(
-        const StringList& lines,
+        const StringList& lines, GearMap& gearMap,
         BigInt& x,
         BigInt& y,
         BigInt& partNumber,
         bool verbose)
     {
+        static BigIntList foundGearCharList;
+        foundGearCharList.clear();
+
         for (;;)
         {
             // first look for the next number
@@ -76,13 +121,15 @@ private:
             // now trace along the digits, accruing the part number, but also checking to see if there are any symbols near the number, making this a genuine part
 
             partNumber = 0;
-            bool isAPart = SchematicCharIsASymbol(lines, x - 1, y - 1) || SchematicCharIsASymbol(lines, x - 1, y)
-                           || SchematicCharIsASymbol(lines, x - 1, y + 1);
+            bool isAPart = SchematicCharIsASymbol(lines, foundGearCharList, x - 1, y - 1)
+                           || SchematicCharIsASymbol(lines, foundGearCharList, x - 1, y)
+                           || SchematicCharIsASymbol(lines, foundGearCharList, x - 1, y + 1);
             for (;;)
             {
                 const char ch = GetSchematicChar(lines, x, y);
-                isAPart = isAPart || SchematicCharIsASymbol(lines, x, y - 1) || SchematicCharIsASymbol(lines, x, y)
-                          || SchematicCharIsASymbol(lines, x, y + 1);
+                isAPart = isAPart || SchematicCharIsASymbol(lines, foundGearCharList, x, y - 1)
+                          || SchematicCharIsASymbol(lines, foundGearCharList, x, y)
+                          || SchematicCharIsASymbol(lines, foundGearCharList, x, y + 1);
 
                 if (std::isdigit(ch))
                 {
@@ -100,7 +147,13 @@ private:
             if (verbose)
                 printf("      Found a number %lld, is a part = %s\n", partNumber, isAPart ? "yes" : "no");
             if (isAPart)
+            {
+                for (BigInt gearIndex: foundGearCharList)
+                {
+                    gearMap[gearIndex].push_back(partNumber);
+                }
                 return;
+            }
 
             partNumber = -1;
         }
@@ -123,11 +176,11 @@ private:
         return true;
     }
 
-    static const char sc_emptyChar = '.';
-
-    bool SchematicCharIsASymbol(const StringList& lines, BigInt x, BigInt y)
+    bool SchematicCharIsASymbol(const StringList& lines, BigIntList& foundGearCharList, BigInt x, BigInt y)
     {
         const char ch = GetSchematicChar(lines, x, y);
+        if (ch == sc_gearChar)
+            foundGearCharList.push_back(y * (BigInt)lines.size() + x);
         return ((ch != sc_emptyChar) && !std::isdigit(ch));
     }
 
