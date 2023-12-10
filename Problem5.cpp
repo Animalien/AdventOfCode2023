@@ -33,12 +33,30 @@ private:
     {
         std::string source;
         std::string dest;
+        Map* destPtr = nullptr;
         std::vector<Span> spanList;
+
+        mutable BigInt lastInput = -1000;
+        mutable BigInt lastSpanIndex = -1;
 
         BigInt MapNumber(BigInt input) const
         {
-            const auto b = std::upper_bound(spanList.begin(), spanList.end(), input);
-            const BigInt spanIndex = b - spanList.begin() - 1;
+            BigInt spanIndex = -1;
+            if (lastInput == (input - 1))
+            {
+                spanIndex = lastSpanIndex;
+                if ((spanList[lastSpanIndex].end > 0) && (input > spanList[lastSpanIndex].end))
+                    ++spanIndex;
+            }
+            else
+            {
+                const auto b = std::upper_bound(spanList.begin(), spanList.end(), input);
+                spanIndex = b - spanList.begin() - 1;
+            }
+
+            lastInput = input;
+            lastSpanIndex = spanIndex;
+
             const Span& span = spanList[spanIndex];
             return input + span.offset;
         }
@@ -135,6 +153,9 @@ private:
         if (verbose)
             printf("\n  Seeds through Maps, Part 1:\n");
 
+        Map*const seedMap = &(mapMap["seed"]);
+        Map* finalMap = nullptr;
+
         BigInt lowestLocation = -1;
         for (BigInt seed: seeds)
         {
@@ -142,7 +163,7 @@ private:
                 printf("    Seed %lld:\n", seed);
 
             BigInt num = seed;
-            Map* map = &(mapMap["seed"]);
+            Map* map = seedMap;
             for (;;)
             {
                 if (verbose)
@@ -153,10 +174,24 @@ private:
                 if (verbose)
                     printf("%lld\n", num);
 
-                if (map->dest == "location")
-                    break;
+                if (finalMap)
+                {
+                    if (map == finalMap)
+                        break;
+                }
+                else
+                {
+                    if (map->dest == "location")
+                    {
+                        finalMap = map;
+                        break;
+                    }
+                }
 
-                map = &(mapMap[map->dest]);
+                if (!map->destPtr)
+                    map->destPtr = &(mapMap[map->dest]);
+
+                map = map->destPtr;
             }
 
             if ((lowestLocation < 0) || (num < lowestLocation))
@@ -195,7 +230,7 @@ private:
                     printf("      Seed %lld:\n", seed);
 
                 BigInt num = seed;
-                Map* map = &(mapMap["seed"]);
+                Map* map = seedMap;
                 for (;;)
                 {
                     if (verbose)
@@ -207,10 +242,24 @@ private:
                     if (verbose)
                         printf("%lld\n", num);
 
-                    if (map->dest == "location")
-                        break;
+                    if (finalMap)
+                    {
+                        if (map == finalMap)
+                            break;
+                    }
+                    else
+                    {
+                        if (map->dest == "location")
+                        {
+                            finalMap = map;
+                            break;
+                        }
+                    }
 
-                    map = &(mapMap[map->dest]);
+                    if (!map->destPtr)
+                        map->destPtr = &(mapMap[map->dest]);
+
+                    map = map->destPtr;
                 }
 
                 if ((lowestLocation < 0) || (num < lowestLocation))
