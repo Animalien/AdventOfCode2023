@@ -130,10 +130,10 @@ private:
             ++lineIndex;
         }
 
-        // now run each of the seeds through the maps, and find the lowest result
+        // now run each of the seeds through the maps, and find the lowest result (Part 1)
 
         if (verbose)
-            printf("\n  Seeds through Maps:\n");
+            printf("\n  Seeds through Maps, Part 1:\n");
 
         BigInt lowestLocation = -1;
         for (BigInt seed: seeds)
@@ -170,6 +170,61 @@ private:
             {
                 if (verbose)
                     printf("      Location is not lowest\n");
+            }
+        }
+
+        printf("  Lowest location found = %lld\n", lowestLocation);
+
+        // now run each of the seeds through the maps, and find the lowest result (Part 1)
+
+        if (verbose)
+            printf("\n  Seeds through Maps, Part 2:\n");
+
+        lowestLocation = -1;
+        for (BigInt seedListIndex = 0; seedListIndex < (BigInt)seeds.size(); seedListIndex += 2)
+        {
+            const BigInt seed0 = seeds[seedListIndex];
+            const BigInt seed1 = seed0 + seeds[seedListIndex + 1];
+
+            if (verbose)
+                printf("    Seed range %lld to %lld:\n", seed0, seed1);
+
+            for (BigInt seed = seed0; seed <= seed1; ++seed)
+            {
+                if (verbose)
+                    printf("      Seed %lld:\n", seed);
+
+                BigInt num = seed;
+                Map* map = &(mapMap["seed"]);
+                for (;;)
+                {
+                    if (verbose)
+                        printf(
+                            "        Num %lld goes through map %s-to-%s, comes out ", num, map->source.c_str(), map->dest.c_str());
+
+                    num = map->MapNumber(num);
+
+                    if (verbose)
+                        printf("%lld\n", num);
+
+                    if (map->dest == "location")
+                        break;
+
+                    map = &(mapMap[map->dest]);
+                }
+
+                if ((lowestLocation < 0) || (num < lowestLocation))
+                {
+                    lowestLocation = num;
+
+                    if (verbose)
+                        printf("        Lowest location updated to %lld\n", lowestLocation);
+                }
+                else
+                {
+                    if (verbose)
+                        printf("        Location is not lowest\n");
+                }
             }
         }
 
