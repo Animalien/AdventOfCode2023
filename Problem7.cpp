@@ -10,8 +10,11 @@ public:
 
     virtual void Run() override
     {
-        RunOnData("Day7Example.txt", true);
-        RunOnData("Day7Input.txt", false);
+        RunOnData("Day7Example.txt", false, true);
+        RunOnData("Day7Input.txt", false, false);
+
+        RunOnData("Day7Example.txt", true, true);
+        RunOnData("Day7Input.txt", true, false);
     }
 
 private:
@@ -19,6 +22,7 @@ private:
 
     enum CardType
     {
+        Joker,
         N2,
         N3,
         N4,
@@ -71,9 +75,14 @@ private:
     };
     typedef std::vector<Hand> HandList;
 
-    void RunOnData(const char* filename, bool verbose)
+    void RunOnData(const char* filename, bool useJokers, bool verbose)
     {
         printf("For file '%s'...\n", filename);
+
+        if (useJokers)
+            printf("  Using Jokers\n");
+        else
+            printf("  Using Jacks\n");
 
         StringList lines;
         ReadFileLines(filename, lines);
@@ -90,7 +99,7 @@ private:
 
             Hand hand;
             hand.handString = tokens[0];
-            hand.type = DetermineHandType(hand.handString, hand.cardList);
+            hand.type = DetermineHandType(hand.handString, hand.cardList, useJokers, verbose);
             hand.tieBreaker = CalcHandTieBreaker(hand.cardList);
             hand.bid = strtoll(tokens[1].c_str(), nullptr, 10);
 
@@ -122,13 +131,30 @@ private:
         printf("  Total winnings = %lld\n", totalWinnings);
     }
 
-    HandType DetermineHandType(const std::string& handString, CardType cardList[sc_handSize])
+    HandType DetermineHandType(const std::string& handString, CardType cardList[sc_handSize], bool useJokers, bool verbose)
     {
         std::unordered_map<CardType, int> cardCountMap;
         for (int i = 0; i < sc_handSize; ++i)
         {
-            cardList[i] = sc_cardTypeMap.find(handString[i])->second;
+            if (useJokers && (handString[i] == 'J'))
+                cardList[i] = Joker;
+            else
+                cardList[i] = sc_cardTypeMap.find(handString[i])->second;
             ++(cardCountMap[cardList[i]]);
+        }
+
+        BigInt numJokers = 0;
+        if (useJokers)
+        {
+            numJokers = cardCountMap[Joker];
+            if (numJokers == 5)
+            {
+                numJokers = 0;
+            }
+            else
+            {
+                cardCountMap[Joker] = 0;
+            }
         }
 
         static std::string cardCountString;
@@ -136,9 +162,19 @@ private:
         cardCountString.clear();
         for (auto mapPair: cardCountMap)
         {
-            cardCountString += ('0' + (char)mapPair.second);
+            if (mapPair.second > 0)
+                cardCountString += ('0' + (char)mapPair.second);
         }
         std::sort(cardCountString.begin(), cardCountString.end(), std::greater<>());
+
+        if (useJokers && (numJokers > 0))
+        {
+            if (verbose)
+                printf("    Hand %s;  Found %lld jokers;  before jokers = %s, ", handString.c_str(), numJokers, cardCountString.c_str());
+            cardCountString[0] += (char)numJokers;
+            if (verbose)
+                printf("after jokers = %s\n", cardCountString.c_str());
+        }
 
         if (cardCountString == "5")
             return FiveOfAKind;
