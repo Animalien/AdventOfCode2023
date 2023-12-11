@@ -1,5 +1,5 @@
 ///////////////////////////
-// Problem 6 - Name
+// Problem 6 - Wait For It
 
 #include "AdventOfCode2023.h"
 
